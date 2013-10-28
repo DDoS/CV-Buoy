@@ -5,6 +5,7 @@ C = cpp
 OUTPUT_PATH = bin/
 SOURCE_PATH = src/
 EXE = $(OUTPUT_PATH)CV-Buoy
+MKDIR_P = mkdir -p
 
 ifeq ($(COMPILER), G++)
   ifeq ($(OS),Windows_NT)
@@ -46,6 +47,7 @@ OBJS := $(patsubst %.$(C),%.$(OBJ),$(wildcard $(SOURCE_PATH)*.$(C)))
 	$(CCMD) -c $(CPPFLAGS) $(CXXFLAGS) $< $(OBJFLAG)$@
 
 all: $(OBJS)
+	${MKDIR_P} ${OUTPUT_PATH}
 	@echo Linking...
 	$(CCMD) $(LDFLAGS) $^ $(LIBS) $(EXEFLAG) $(EXE)
 
