@@ -54,7 +54,8 @@ int main(int argc,char *argv[]) {
 		// Release the thresholded image
 		cvReleaseImage(&thresholdImage);
 		// Wait 50ms for the escape key
-		if (cvWaitKey(10) == 27) {
+		int key = cvWaitKey(10);
+		if (key == 27 || key == 1048603) {
 			// If escape was pressed, exit
 			break;
 		}
