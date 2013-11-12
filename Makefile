@@ -21,7 +21,7 @@ OBJS := $(patsubst %.$(C),%.$(OBJ),$(wildcard $(SOURCE_PATH)*.$(C)))
 
 %.$(OBJ):%.$(C)
 	@echo Compiling $(basename $<)...
-	$(CCMD) -c $(CPPFLAGS) $(CXXFLAGS) $< $(OBJFLAG)$@
+	$(CCMD) -c $(CPPFLAGS) $< $(OBJFLAG)$@
 
 all: $(OBJS)
 	${MKDIR_P} ${OUTPUT_PATH}
