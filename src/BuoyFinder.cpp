@@ -37,8 +37,8 @@ static void initColorCorrection() {
 
 // Clamps the integer between low and high so that low <= n <= high
 inline int clamp(int n, int low, int high) {
-    n = n > high ? high: n;
-    return n < low ? low : n;
+	n = n > high ? high: n;
+	return n < low ? low : n;
 }
 
 // Applies color correction to the color
@@ -65,10 +65,10 @@ static void applyColorCorrection(Mat* image) {
 	int cols = image->cols * image->channels();
 	// Iterate over entire image, applying the color correction  
 	uchar* row;
-    for (int i = 0; i < rows; i++) {
-        row = image->ptr<uchar>(i);
-        for (int j = 0; j < cols; j += 3) {
-    		colorCorrect(&row[j], &row[j + 1], &row[j + 2]);
+	for (int i = 0; i < rows; i++) {
+		row = image->ptr<uchar>(i);
+		for (int j = 0; j < cols; j += 3) {
+			colorCorrect(&row[j], &row[j + 1], &row[j + 2]);
 		}
 	}
 }
@@ -91,9 +91,9 @@ static void inRangeWrapped(Mat* source, Scalar low, Scalar high, Mat* destinatio
 	uchar* srcRow;
 	uchar* dstRow;
 	for (int i = 0; i < srcRows; i++) {
-    	srcRow = source->ptr<uchar>(i);
-    	dstRow = destination->ptr<uchar>(i);
-    	for (int j = 0; j < srcCols; j += 3) {
+		srcRow = source->ptr<uchar>(i);
+		dstRow = destination->ptr<uchar>(i);
+		for (int j = 0; j < srcCols; j += 3) {
 			int h = int(srcRow[j]);
 			int s = int(srcRow[j + 1]);
 			int v = int(srcRow[j + 2]);
@@ -108,8 +108,8 @@ static void inRangeWrapped(Mat* source, Scalar low, Scalar high, Mat* destinatio
 			} else {
 				dstRow[j / 3] = 0;
 			}
-        }
-    }
+		}
+	}
 }
 
 
@@ -130,10 +130,10 @@ static bool checkDisk(Mat* image, Point* center, float radius, int sampleCount, 
 	// Initialize the random number generator and ranges for the full disk in polar coordinates
 	static mt19937 generator;
 	static uniform_real_distribution<float> angleRange(0, 2 * M_PI);
-    uniform_real_distribution<float> radiusRange(0, radius);
-    // Total weight of the samples
-    float weight = 0;
-    // Do the sampling
+	uniform_real_distribution<float> radiusRange(0, radius);
+	// Total weight of the samples
+	float weight = 0;
+	// Do the sampling
  	for (int i = 0; i < sampleCount; i++) {
  		// Pick a random point on the disk
  		float angle = angleRange(generator);
@@ -185,10 +185,10 @@ int main(int argc, char* argv[]) {
 		// Show the circles on the frame
 		for (int i = 0; i < circles.size(); i++) {
    			Point center(cvRound(circles[i][0]), cvRound(circles[i][1]));
-      		int radius = cvRound(circles[i][2]);
-      		// Check is we have a well defined disk
-      		if (checkDisk(&thresholdImage, &center, radius, 10, 0.5f)) {
-      			// Draw the circle indicators
+	  		int radius = cvRound(circles[i][2]);
+	  		// Check is we have a well defined disk
+	  		if (checkDisk(&thresholdImage, &center, radius, 10, 0.5f)) {
+	  			// Draw the circle indicators
   		 		circle(frame, center, 3, Scalar(0, 255, 0), -1, 8, 0);
  				circle(frame, center, radius, Scalar(0, 0, 255), 3, 8, 0);
  			}
