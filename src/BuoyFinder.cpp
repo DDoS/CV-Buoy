@@ -90,12 +90,11 @@ static void inRangeWrapped(Mat* source, Scalar low, Scalar high, Mat* destinatio
 	// Iterate over entire image  
 	uchar* srcRow;
 	uchar* dstRow;
-    for (int i = 0; i < srcRows; i++) {
-        srcRow = source->ptr<uchar>(i);
-        dstRow = destination->ptr<uchar>(i);
-        for (int j = 0; j < srcCols; j += 3) {
-            // Rotate the H value so that low becomes zero
-    		int h = int(srcRow[j]);
+	for (int i = 0; i < srcRows; i++) {
+    	srcRow = source->ptr<uchar>(i);
+    	dstRow = destination->ptr<uchar>(i);
+    	for (int j = 0; j < srcCols; j += 3) {
+			int h = int(srcRow[j]);
     		int s = int(srcRow[j + 1]);
     		int v = int(srcRow[j + 2]);
     		bool hPass;
