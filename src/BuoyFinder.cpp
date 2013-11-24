@@ -95,19 +95,19 @@ static void inRangeWrapped(Mat* source, Scalar low, Scalar high, Mat* destinatio
     	dstRow = destination->ptr<uchar>(i);
     	for (int j = 0; j < srcCols; j += 3) {
 			int h = int(srcRow[j]);
-    		int s = int(srcRow[j + 1]);
-    		int v = int(srcRow[j + 2]);
-    		bool hPass;
-    		if (lowH < highH) {
-    			hPass = h >= lowH && h <= highH;
-    		} else {
-    			hPass = (h >= lowH && h <= 180) || (h >= 0 && h <= highH);
-    		}
-    		if (hPass && s >= low[1] && s <= high[1] && v >= low[2] && v <= high[2]) {
-    			dstRow[j / 3] = 255;
-    		} else {
-    			dstRow[j / 3] = 0;
-    		}
+			int s = int(srcRow[j + 1]);
+			int v = int(srcRow[j + 2]);
+			bool hPass;
+			if (lowH < highH) {
+				hPass = h >= lowH && h <= highH;
+			} else {
+				hPass = (h >= lowH && h <= 180) || (h >= 0 && h <= highH);
+			}
+			if (hPass && s >= low[1] && s <= high[1] && v >= low[2] && v <= high[2]) {
+				dstRow[j / 3] = 255;
+			} else {
+				dstRow[j / 3] = 0;
+			}
         }
     }
 }
