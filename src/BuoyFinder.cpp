@@ -13,16 +13,34 @@ using namespace cv;
 #define FILE "RoboSub 2013 Buoy.mp4"
 //#define FILE "RoboSub 2013 Buoy Closeup.mp4"
 
-// The lower bound of the threshold (currently a shade of red)
-static const Scalar lowColor(-15, 30, 70);
-// The higher bound of the threshold (currently a shade of red)
-static const Scalar highColor(15, 255, 255);
 // The color of a white sample in the footage for color correction
 static const Scalar colorSample(170, 160, 170);
 // The desired white for the sample after color correction
 static const Scalar targetColor(20, 40, 220);
 // The color correction to apply to get correct whites
 static Scalar colorCorrection;
+
+// A struct for the buoy color range (in HSV)
+struct BuoyColorProfile {
+	Scalar lowColor;
+	Scalar highColor;
+
+	BuoyColorProfile(Scalar lowColor, Scalar highColor)
+		: lowColor(lowColor), highColor(highColor) {}
+} ;
+
+// The two default buoy color profiles
+static const BuoyColorProfile RED_BUOY(Scalar(-15, 30, 70), Scalar(15, 255, 255));
+static const BuoyColorProfile YELLOW_BUOY(Scalar(10, 30, 40), Scalar(55, 255, 255));
+
+// A struct for the information regarding detected buoys (center position and radius)
+struct DetectedBuoy {
+	Point center;
+	int radius;
+
+	DetectedBuoy(Point center, int radius)
+		: center(center), radius(radius) {}
+} ;
 
 // Computes some values for color correction
 static void initColorCorrection() {
@@ -63,7 +81,7 @@ static void applyColorCorrection(Mat* image) {
 	// Info for image size
 	int rows = image->rows;
 	int cols = image->cols * image->channels();
-	// Iterate over entire image, applying the color correction  
+	// Iterate over entire image, applying the color correction 
 	uchar* row;
 	for (int i = 0; i < rows; i++) {
 		row = image->ptr<uchar>(i);
@@ -87,7 +105,7 @@ static void inRangeWrapped(Mat* source, Scalar low, Scalar high, Mat* destinatio
 	assert(low[0] <= high[0]);
 	int lowH = (int(low[0]) + 180) % 180;
 	int highH = (int(high[0]) + 180) % 180;
-	// Iterate over entire image  
+	// Iterate over entire image 
 	uchar* srcRow;
 	uchar* dstRow;
 	for (int i = 0; i < srcRows; i++) {
@@ -114,25 +132,25 @@ static void inRangeWrapped(Mat* source, Scalar low, Scalar high, Mat* destinatio
 
 
 // Gets the black and white thresholded image from the original color image
-static void getThresholdImage(Mat* image, Mat* thresholdImage) {
+static void getThresholdImage(Mat* image, BuoyColorProfile buoy, Mat* destination) {
 	// Smooth to reduce noise
 	GaussianBlur(*image, *image, Size(3, 3), 0);
 	// Convert from RGB to HSV
 	Mat HSVImage(image->rows, image->cols, CV_8UC3);
 	cvtColor(*image, HSVImage, CV_BGR2HSV);
 	// Generate the threshold image
-	inRangeWrapped(&HSVImage, lowColor, highColor, thresholdImage);
+	inRangeWrapped(&HSVImage, buoy.lowColor, buoy.highColor, destination);
 }
 
 // Uses a Monte-Carlo method to check is the disk is at least as dense (in the sense of no missing pieces) as the desired density (as a percentage)
 // It's used to discard invalid circles formed by random contours 
-static bool checkDisk(Mat* image, Point* center, float radius, int sampleCount, float density) {
+static bool checkDisk(Mat* image, Point* center, int radius, int sampleCount, float minDensity) {
 	// Initialize the random number generator and ranges for the full disk in polar coordinates
 	static mt19937 generator;
 	static uniform_real_distribution<float> angleRange(0, 2 * M_PI);
 	uniform_real_distribution<float> radiusRange(0, radius);
-	// Total weight of the samples
-	float weight = 0;
+	// Total density of the samples
+	float density = 0;
 	// Do the sampling
  	for (int i = 0; i < sampleCount; i++) {
  		// Pick a random point on the disk
@@ -141,16 +159,45 @@ static bool checkDisk(Mat* image, Point* center, float radius, int sampleCount, 
  		int xx = int(radius * cos(angle) + center->x);
  		int yy = int(radius * sin(angle) + center->y);
  		// Add the normalized weight
-		weight += float(image->at<uchar>(yy, xx)) / 255;
+		density += float(image->at<uchar>(yy, xx)) / 255;
  	}
- 	// Normalize the total weight
- 	weight /= sampleCount;
- 	return weight >= density;
+ 	// Normalize the total density
+ 	density /= sampleCount;
+ 	return density >= minDensity;
 }
 
+// The main method of the detection algorithm, use RED_BUOY or YELLOW_BUOY for color profiles
+static vector<DetectedBuoy> detectBuoys(Mat* image, BuoyColorProfile buoy) {
+	// Compute color correction data from the color sample and target color once
+	static bool isColorCorrectionComputed = false;
+	if (!isColorCorrectionComputed) {
+		initColorCorrection();
+		isColorCorrectionComputed = true;
+	}
+	// Apply color correction
+	applyColorCorrection(image);
+	// Threshold it
+	Mat thresholdImage(image->rows, image->cols, CV_8UC1);
+	getThresholdImage(image, buoy, &thresholdImage);	
+	// Blur the image an do circle detection
+	GaussianBlur(thresholdImage, thresholdImage, Size(25, 25), 0);	
+	vector<Vec3f> circles;
+	HoughCircles(thresholdImage, circles, CV_HOUGH_GRADIENT, 2, thresholdImage.rows / 8, 225, 75);
+	// Process the circles
+	vector<DetectedBuoy> buoys;
+	for (int i = 0; i < circles.size(); i++) {
+  		Point center(cvRound(circles[i][0]), cvRound(circles[i][1]));
+ 		int radius = cvRound(circles[i][2]);
+ 		// Check that we have a well defined disk
+ 		if (checkDisk(&thresholdImage, &center, radius, 30, 0.90f)) {
+ 			buoys.push_back(DetectedBuoy(center, radius));
+ 		}
+ 	}
+ 	return buoys;
+}
+
+// For demonstration purposes
 int main(int argc, char* argv[]) {
-	// Compute color correction data from the color sample and target color
-	initColorCorrection();
 	// Get the first video, fail if it's not available
 	VideoCapture video(FILE);
 	if (!video.isOpened()) {
@@ -162,40 +209,26 @@ int main(int argc, char* argv[]) {
 	int frameDelay = int(round((double(1) / frameRate) * 1000));
 	// Get the horizontal resolution (width) of the image to place the windows correctly
 	double horizontalResolution = video.get(CV_CAP_PROP_FRAME_WIDTH);
-	// Create and place the windows
-	namedWindow("Input");
-	moveWindow("Input", 100, 100);
-	namedWindow("Output");
-	moveWindow("Output", 110 + int(horizontalResolution), 100);
+	// Create and place the window
+	namedWindow("Detection");
+	moveWindow("Detection", 100, 100);	
 	// Get the first frame from the video
 	Mat frame;
 	bool hasFrames = video.grab();
 	video.retrieve(frame);
 	// As long as we have a frame
 	while (hasFrames) {
-		// Apply color correction
-		applyColorCorrection(&frame);
-		// Threshold it
-		Mat thresholdImage(frame.rows, frame.cols, CV_8UC1);
-		getThresholdImage(&frame, &thresholdImage);
-		// Blur the image an do circle detection
-		GaussianBlur(thresholdImage, thresholdImage, Size(25, 25), 0);
-		vector<Vec3f> circles;
-		HoughCircles(thresholdImage, circles, CV_HOUGH_GRADIENT, 2, thresholdImage.rows / 8, 225, 75);
-		// Show the circles on the frame
-		for (int i = 0; i < circles.size(); i++) {
-   			Point center(cvRound(circles[i][0]), cvRound(circles[i][1]));
-	  		int radius = cvRound(circles[i][2]);
-	  		// Check is we have a well defined disk
-	  		if (checkDisk(&thresholdImage, &center, radius, 10, 0.5f)) {
-	  			// Draw the circle indicators
-  		 		circle(frame, center, 3, Scalar(0, 255, 0), -1, 8, 0);
- 				circle(frame, center, radius, Scalar(0, 0, 255), 3, 8, 0);
- 			}
- 		}
-		// Show the original image and the thresholded one
-		imshow("Input",  frame);
-		imshow("Output", thresholdImage);
+		// Detect the buoys
+		Mat frameClone = frame.clone();
+		vector<DetectedBuoy> detected = detectBuoys(&frameClone, RED_BUOY);
+		// Show the detected buoys on the frame
+		for (int i = 0; i < detected.size(); i++) {
+	 		// Draw the circle markers
+ 		 	circle(frame, detected[i].center, 3, Scalar(0, 255, 0), -1, 8, 0);
+ 			circle(frame, detected[i].center, detected[i].radius, Scalar(0, 0, 255), 3, 8, 0);
+		}
+		// Show the image with the detection markers
+		imshow("Detection", frame);
 		// Wait 50ms for the escape key
 		int key = waitKey(frameDelay);
 		if (key == 27 || key == 1048603) {
