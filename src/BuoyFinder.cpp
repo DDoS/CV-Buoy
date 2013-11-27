@@ -218,14 +218,25 @@ int main(int argc, char* argv[]) {
 	video.retrieve(frame);
 	// As long as we have a frame
 	while (hasFrames) {
-		// Detect the buoys
-		Mat frameClone = frame.clone();
-		vector<DetectedBuoy> detected = detectBuoys(&frameClone, RED_BUOY);
+		Mat frameClone;
+		vector<DetectedBuoy> detected;
+		// Detect the red buoys
+		frameClone = frame.clone();
+		detected = detectBuoys(&frameClone, RED_BUOY);
 		// Show the detected buoys on the frame
 		for (int i = 0; i < detected.size(); i++) {
 	 		// Draw the circle markers
- 		 	circle(frame, detected[i].center, 3, Scalar(0, 255, 0), -1, 8, 0);
+ 		 	circle(frame, detected[i].center, 3, Scalar(255, 0, 0), -1, 8, 0);
  			circle(frame, detected[i].center, detected[i].radius, Scalar(0, 0, 255), 3, 8, 0);
+		}
+		// Detect the yellow buoys
+		frameClone = frame.clone();
+		detected = detectBuoys(&frameClone, YELLOW_BUOY);
+		// Show the detected buoys on the frame
+		for (int i = 0; i < detected.size(); i++) {
+	 		// Draw the circle markers
+ 		 	circle(frame, detected[i].center, 3, Scalar(255, 0, 0), -1, 8, 0);
+ 			circle(frame, detected[i].center, detected[i].radius, Scalar(0, 255, 255), 3, 8, 0);
 		}
 		// Show the image with the detection markers
 		imshow("Detection", frame);
